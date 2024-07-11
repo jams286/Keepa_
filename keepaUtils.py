@@ -125,11 +125,12 @@ def RequestProducts(asin_list:list)->dict:
     return asins_response
 
 if __name__ == '__main__':
-    from datetime import datetime
-    import time
-    a = 21564000
-    b = 60
-    c = 7107952
-    ts = (c+a)*b
-    # ts = 1720335619.1508439
-    print(datetime.fromtimestamp(ts))
+    pass
+    # from datetime import datetime
+    # import time
+    # a = 21564000
+    # b = 60
+    # c = 7107952
+    # ts = (c+a)*b
+    # # ts = 1720335619.1508439
+    # print(datetime.fromtimestamp(ts))
