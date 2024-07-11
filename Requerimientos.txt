@@ -1,0 +1,20 @@
+Tabla:
+Columnas
+ASIN
+CSV - 0 Amazon
+CSV - 1 New
+CSV - 3 Sales
+CSV - 7 New_Fbm_shipping
+CSV - 10 New_Fba
+CSV - 11 Count_New
+MonthlySold
+packageWeight
+Revisado
+
+usar days=365
+buscar precio mas reciente y precio mas bajo
+
+ASIN,Locale,Title,Sales Rank: Drops last 30 days,Sales Rank: Drops last 90 days,Bought in past month,Buy Box: 180 days avg.,Buy Box: 90 days avg.,
+Buy Box: 30 days avg.,Buy Box: Current,New: 180 days avg.,New: 90 days avg.,New: 30 days avg.,New: Current,Amazon: Current,Amazon out of stock percentage: 90 days OOS %,
+Amazon: 90 days avg.,Amazon: 180 days avg.,FBA Fees:,Buy Box: % Amazon 90 days,URL: Amazon,Package: Weight (g),Referral Fee %,Hazardous Materials,New Offer Count: Current,
+Buy Box Seller,Lowest FBA Seller,Brand
