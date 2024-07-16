@@ -6,9 +6,13 @@ import time
 import threading
 
 def update_gui(tokens, total_productos, productos_procesados, refillIn):
-    tokens_var.set(f"Tokens disponibles: {tokens}")
-    productos_var.set(f"Productos procesados: {productos_procesados}/{total_productos}")
-    refill_var.set(f"Tiempo de espera: {refillIn / 60000:.2f} minutos")
+    # tokens_var.set(f"Tokens disponibles: {tokens}")
+    # productos_var.set(f"Productos procesados: {productos_procesados}/{total_productos}")
+    # refill_var.set(f"Tiempo de espera: {refillIn / 60000:.2f} minutos")
+    print(f"Tokens disponibles: {tokens}")
+    print(f"Productos procesados: {productos_procesados}/{total_productos}")
+    print(f"Tiempo de espera: {refillIn / 60000:.2f} minutos")
+
 
 def run_process():  
     def import_excel()->openpyxl.Workbook:            
@@ -29,9 +33,9 @@ def run_process():
     workbook = import_excel()    
     sheet = workbook.active    
     asins_list = []
-    for row in sheet.iter_rows(min_row=2, values_only=True):  # Empezar desde la segunda fila (después de los encabezados)        
+    for row in sheet.iter_rows(min_row=2, values_only=True, max_row=131):  # Empezar desde la segunda fila (después de los encabezados)        
         asins_list.append(row[0])      
-    batch_size = 100
+    batch_size = 10
     total_productos = len(asins_list)
     productos_procesados = 0
     wb2 = kp.generarExcel()
@@ -49,6 +53,7 @@ def run_process():
                 kp.agregarProductosExcel(wb2, kp.RequestProducts(batch))
                 tokens_left -= batch_size
                 productos_procesados += batch_size
+                
                 update_gui(tokens_left, total_productos, productos_procesados, sleepTime)
                 if tokens_left < batch_size:
                     update_gui(tokens_left, total_productos, productos_procesados, sleepTime)
@@ -121,9 +126,9 @@ tokens_label = tk.Label(content2, textvariable=tokens_var,bg="#008170")
 productos_label = tk.Label(content2, textvariable=productos_var,bg="#008170")
 refill_label = tk.Label(content2, textvariable=refill_var,bg="#008170")
 
-tokens_label.grid(column=0 ,row=1)
-productos_label.grid(column=0 ,row=2)
-refill_label.grid(column=0 ,row=3)
+# tokens_label.grid(column=0 ,row=1)
+# productos_label.grid(column=0 ,row=2)
+# refill_label.grid(column=0 ,row=3)
 update_gui(0, 0, 0, 0)
 
 root.mainloop()

@@ -121,20 +121,25 @@ def RequestProducts(asin_list:list)->dict:
             new_offer_count_current = 0
             lowest_fba_seller = 0
             monthlySold = 0
+            fbafees = 0
+            referralFeePercent = 0
             asin = product['asin']
             domainId = product['domainId']            
             imagesCSV = product['imagesCSV']
-            title = product['title']
-            print(f'asin:{asin}-{title}')
+            title = product['title']           
             if 'monthlySold' in product:
                 monthlySold = product['monthlySold']
             if product['csv'][1] is not None:
                 new_current = product['csv'][1][1]/100
             if product['csv'][0] is not None:
                 amazon_current = product['csv'][0][1]/100
-            fbafees = product['fbaFees']['pickAndPackFee']/100
+            if 'fbaFees' in product:
+                if product['fbaFees'] is not None:
+                    if product['fbaFees']['pickAndPackFee'] is not None:
+                        fbafees = product['fbaFees']['pickAndPackFee']/100
             packageWeight = product['packageWeight']/453.59290944
-            referralFeePercent = product['referralFeePercent']
+            if 'referralFeePercent' in product:
+                referralFeePercent = product['referralFeePercent']
             csv_values = product.get('csv',[])            
             hazardousMaterials = ''
             if 'hazardousMaterials' in product:
