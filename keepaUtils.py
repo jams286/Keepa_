@@ -1,13 +1,18 @@
-import openpyxl.workbook
 import requests
 import configparser
 import openpyxl
 import csv
+from datetime import datetime
+
 json_keys =  [
     "asin", "domainId", "imagesCSV", "title", "monthlySold", "csv.[1].[1]", "csv.[0].[1]",
     "fbafees.pickAndPackFee", "packageWeight", "referralFeePercent", "hazardousMaterials",
     "csv.[11].[1]", "csv.[10].[1]", "manufacturer", "brand"
 ]
+
+def GetDateTimeFromKeepTime(keepaTime:int):              
+    ts = (keepaTime+21564000)*60     
+    return datetime.fromtimestamp(ts)
 
 def getConfig()->configparser.ConfigParser:
     config = configparser.ConfigParser()
@@ -33,7 +38,7 @@ def saveConfig(config:configparser.ConfigParser)->bool:
     else:
         return True
     
-def load_excel_data(filename)-> openpyxl.workbook:
+def load_excel_data(filename)-> openpyxl.Workbook:
     try:
         # Cargar el archivo Excel
         wb = openpyxl.load_workbook(filename)       
@@ -42,7 +47,7 @@ def load_excel_data(filename)-> openpyxl.workbook:
     else:
         return wb
     
-def load_csv_data(filename)-> openpyxl.workbook:
+def load_csv_data(filename)-> openpyxl.Workbook:
     try:
         wb = openpyxl.Workbook()
         ws = wb.active
@@ -57,6 +62,40 @@ def load_csv_data(filename)-> openpyxl.workbook:
     else:
         return wb
 
+def generarExcel()->openpyxl.Workbook:
+    columnas_excel = ["asin","domainId","imagesCSV","title","monthlySold","new_current","amazon_current","fbafees","packageWeight",
+                      "referralFeePercent","hazardousMaterials","new_offer_count_current","lowest_fba_seller","manufacturer","brand"]
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'productos'
+    ws.append(columnas_excel)
+    return wb
+    # wb.save("productos.xlsx")
+
+def agregarProductosExcel(wb:openpyxl.Workbook, productos:dict) -> openpyxl.Workbook:
+    ws = wb.active
+    for key, value in productos.items():
+        ws.append(value)
+
+def guardarExcel(wb:openpyxl.Workbook):
+    wb.save('productos.xlsx')
+
+def TokenStatus()->int:    
+    config = getConfig()    
+    url_base = config['keepa']['url']
+    api_key = config['keepa']['api_key']    
+    url = f"{url_base}/token?key={api_key}"
+    payload = {}
+    headers = {}        
+    response = requests.request("GET", url, headers=headers, data=payload)
+    if response.status_code == 200:
+        response_json = response.json()
+        tokensLeft = response_json['tokensLeft']
+        refillIn = response_json['refillIn']
+        return (tokensLeft,refillIn)
+    else:
+        return 0
+
 def RequestProducts(asin_list:list)->dict:      
     # columnas_excel =  [
     #                 "asin", "domainId", "imagesCSV", "title", "monthlySold", "csv.[1].[1]", "csv.[0].[1]",
@@ -70,34 +109,37 @@ def RequestProducts(asin_list:list)->dict:
     url = f"{url_base}/product?key={api_key}&domain=1&days={365}&asin={asins}"
     payload = {}
     headers = {}
-    asins_response = {}
+    asins_response = {}    
+    
     response = requests.request("GET", url, headers=headers, data=payload)
     if response.status_code == 200:
-        response_json = response.json()
-        
-        for product in response_json['products']:
+        response_json = response.json()        
+        for product in response_json['products']:            
             new_current = 0
             amazon_current = 0
             new_offer_count_current = 0
             lowest_fba_seller = 0
+            monthlySold = 0
+            fbafees = 0
+            referralFeePercent = 0
             asin = product['asin']
             domainId = product['domainId']            
             imagesCSV = product['imagesCSV']
-            title = product['title']
-            monthlySold = product['monthlySold']
+            title = product['title']           
+            if 'monthlySold' in product:
+                monthlySold = product['monthlySold']
             if product['csv'][1] is not None:
                 new_current = product['csv'][1][1]/100
             if product['csv'][0] is not None:
                 amazon_current = product['csv'][0][1]/100
-            fbafees = product['fbaFees']['pickAndPackFee']/100
+            if 'fbaFees' in product:
+                if product['fbaFees'] is not None:
+                    if product['fbaFees']['pickAndPackFee'] is not None:
+                        fbafees = product['fbaFees']['pickAndPackFee']/100
             packageWeight = product['packageWeight']/453.59290944
-            referralFeePercent = product['referralFeePercent']
-            csv_values = product.get('csv',[])
-            for index, value in enumerate(csv_values):
-                if value is not None:
-                    print('')
-                else:
-                    print('')
+            if 'referralFeePercent' in product:
+                referralFeePercent = product['referralFeePercent']
+            csv_values = product.get('csv',[])            
             hazardousMaterials = ''
             if 'hazardousMaterials' in product:
                 hazardousMaterials_list = product['hazardousMaterials']
@@ -125,12 +167,12 @@ def RequestProducts(asin_list:list)->dict:
     return asins_response
 
 if __name__ == '__main__':
-    pass
+    # pass   
+    # print(GetDateTimeFromKeepTime(6628900))
     # from datetime import datetime
-    # import time
-    # a = 21564000
-    # b = 60
-    # c = 7107952
-    # ts = (c+a)*b
-    # # ts = 1720335619.1508439
-    # print(datetime.fromtimestamp(ts))
+    import time
+    a = 21564000
+    b = 60
+    c = 7166604
+    ts = (c+a)*b   
+    print(datetime.fromtimestamp(ts))
