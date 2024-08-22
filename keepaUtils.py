@@ -1,4 +1,3 @@
-import openpyxl.workbook
 import requests
 import configparser
 import openpyxl
@@ -168,11 +167,12 @@ def RequestProducts(asin_list:list)->dict:
     return asins_response
 
 if __name__ == '__main__':
-    pass    
+    # pass   
+    # print(GetDateTimeFromKeepTime(6628900))
     # from datetime import datetime
-    # import time
-    # a = 21564000
-    # b = 60
-    # c = 7107952
-    # ts = (c+a)*b   
-    # print(datetime.fromtimestamp(ts))
+    import time
+    a = 21564000
+    b = 60
+    c = 7166604
+    ts = (c+a)*b   
+    print(datetime.fromtimestamp(ts))
