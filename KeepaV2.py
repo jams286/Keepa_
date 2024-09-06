@@ -1,52 +1,93 @@
 import keepa
 import asyncio
-import requests
+import openpyxl 
+import traceback
+from datetime import datetime
 import KeepaV2Utils as KUtils
 
-config = KUtils.getConfig()   
-url_base = config['keepa']['url']
-api_key = config['keepa']['api_key']    
-api = keepa.Keepa(api_key)
-# api.best_sellers_query
+# hora inicio
+hora_inicio = datetime.now()
 
-async def GetProductos(asins:list, domain:str, buybox:bool, days:int) :
+config = KUtils.getConfig()   
+# url_base = config['keepa']['url']
+api_key = config['keepa']['api_key']
+dominio = config['keepa']['domain']    
+mode = int(config['keepa']['modo'])
+cantidad_maxima_productos = int(config['keepa']['cantidad_maxima_productos'])
+buybox_int = int(config['keepa']['buybox'])
+if buybox_int == 0:
+    buybox_ = False
+elif buybox_int == 1:
+    buybox_ = True
+else:
+    buybox_ = False
+if mode == 0 :
+    categoria = config['bestSeller']['categoria']
+    year = config['bestSeller']['year']
+    month = config['bestSeller']['month']
+elif mode == 1 :
+    pass
+elif mode == 2 :
+    file_path = config['file']['ubicacion_archivo']
+# api.best_sellers_query
+total_token = 0
+    
+async def GetProducts(asins:list, domain:str, buybox:bool, days:int) :
+    global total_token
     api_async = await keepa.AsyncKeepa.create(api_key)
+    total_token = api_async.tokens_left
+    print(f'tokens:{total_token}')
     return await api_async.query(asins, domain=domain, buybox=buybox, days=days)
     
-
-def BestSellers(domain:int, category:str, range:int, mont:int, year:int)->list:
-    asins_l = []
-    tokens_left = api.tokens_left
-    while tokens_left < 50:
-        api.wait_for_tokens()
-        tokens_left = api.tokens_left
-    print(tokens_left)  
-    url = f"{url_base}/bestsellers?key={api_key}&domain={domain}&category={category}&range={range}&month={mont}&year={year}"
-    payload = {}
-    headers = {}
-    response = requests.request("GET", url, headers=headers, data=payload)
-    if response.status_code == 200:
-        response_json = response.json()
-        if 'bestSellersList' in response_json:
-            if response_json['bestSellersList'] is not None:
-                asins_l = response_json['bestSellersList']['asinList']
-    print(len(asins_l))
-    return asins_l
-
-
-
 if __name__ == '__main__':
-    pass
-    #BestSellers US
-    # bs_us_l = BestSellers(1, '165793011',30,11,2023)
-    # #BestSellers CA
-    # bs_ca_l = BestSellers(6,'165793011',30,11,2023)
-    # KUtils.SaveBestSellerList(bs_us_l, '165793011',1,'2023-11')
-    # KUtils.SaveBestSellerList(bs_ca_l, '165793011',6,'2023-11')
+    print(f"Iniciando...")
+    batch_size = 100
+    procesados = 0
+    producs = {}
+    asins_list = []
+    # BestSeller
+    if mode == 0:
+        wb_ = KUtils.generarExcel(categoria,dominio,f"{year}-{month}")
+        asins_list = KUtils.BestSellers(dominio, categoria, month, year)  #Canada 6205517011
+        # asins_list = ['B00000IZKX']
+    # ArchivoExcel
+    if mode == 2:
+        wb_ = KUtils.generarExcel('',dominio,'')
+        asins_list = KUtils.import_excel(file_path)
+    if len(asins_list) > cantidad_maxima_productos:
+        asin_max = asins_list[:cantidad_maxima_productos]
+    else:
+        asin_max = asins_list
 
-    # #BestSellers US
-    # bs_us_l = BestSellers(1, '165793011',30,12,2023)
-    # #BestSellers CA
-    # bs_ca_l = BestSellers(6,'165793011',30,12,2023)
-    # KUtils.SaveBestSellerList(bs_us_l, '165793011',1,'2023-12')
-    # KUtils.SaveBestSellerList(bs_ca_l, '165793011',6,'2023-12')
+    total = len(asin_max)
+    try:
+        for i in range(0,len(asin_max),batch_size):
+            batch = asin_max[i:i+batch_size]
+            if dominio == '1':
+                dom = 'US'
+            elif dominio == '6':
+                dom = 'CA'
+            productos  = asyncio.run(GetProducts(batch, dom, buybox_, 365))
+            if mode == 0:
+                products_dict = KUtils.process_products(productos,month=int(month), year=int(year)) 
+            else:   
+                products_dict = KUtils.process_products(productos)
+            KUtils.agregarProductosExcel(wb_, products_dict)
+            procesados += batch_size 
+            print(f"Guardando Productos...{procesados}/{total}")
+    except Exception as e:
+        traceback.print_exc()
+    finally:
+        fname = ''
+        if mode == 0:
+            fname = f'BestSeller{month}-{year}'
+        if mode == 2:
+            fname = f'Asins'
+
+        KUtils.guardarExcel(wb_, fname)
+        print(f'Finalizando...')
+        hora_fin = datetime.now()
+        duracion = (hora_fin - hora_inicio).total_seconds()
+        print(f"Hora de inicio: {hora_inicio.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"Hora de finalización: {hora_fin.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"Duración: {duracion} segundos ({duracion / 60} minutos)")

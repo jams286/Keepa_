@@ -1,8 +1,11 @@
+import csv
+import keepa
+import openpyxl
 import requests
 import configparser
-import openpyxl
-import csv
 from datetime import datetime
+
+
 
 json_keys =  [
     "asin", "domainId", "imagesCSV", "title", "monthlySold", "csv.[1].[1]", "csv.[0].[1]",
@@ -166,13 +169,14 @@ def RequestProducts(asin_list:list)->dict:
         print(f"Error: {response.status_code}")
     return asins_response
 
+
 if __name__ == '__main__':
     # pass   
-    # print(GetDateTimeFromKeepTime(6628900))
+    print(GetDateTimeFromKeepTime(7190066))
     # from datetime import datetime
-    import time
-    a = 21564000
-    b = 60
-    c = 7166604
-    ts = (c+a)*b   
-    print(datetime.fromtimestamp(ts))
+    # import time
+    # a = 21564000
+    # b = 60
+    # c = 7166604
+    # ts = (c+a)*b   
+    # print(datetime.fromtimestamp(ts))
