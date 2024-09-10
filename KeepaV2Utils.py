@@ -138,7 +138,10 @@ def getAvgMontly(price_list:list, date_list:list)->dict:
         precios = precios_por_mes.get(clave_mes_año, [])
         if precios:
             precios_ = [x for x in precios if x is not None and not math.isnan(x)]
-            promedio = sum(precios_) / len(precios_)
+            if len(precios_) > 0:
+                promedio = sum(precios_) / len(precios_)
+            else:
+                promedio = 0
         else:
             promedio = 0  # Mes sin precios, promedio 0
         promedios_por_mes[clave_mes_año] = promedio
@@ -320,30 +323,30 @@ def guardarBestSeller(filename:str,prods:list, title:str):
     print(f"saved {filename}")    
 
 def BestSellers(domain:str, category:str, month:str, year:str)->list:
-    asins_l = []
-    config = getConfig()
-    url_base = config['keepa']['url']
-    api_key = config['keepa']['api_key']
-    api = keepa.Keepa(api_key)
-    tokens_left = api.tokens_left
-    while tokens_left < 50:
-        api.wait_for_tokens()
-        tokens_left = api.tokens_left
-    print(f"Buscando BestSellers...Tokens:{api.tokens_left}")
-    # url = f"{url_base}/bestsellers?key={api_key}&domain={domain}&category={category}&range={range}&month={mont}&year={year}"
-    url = f"{url_base}/bestsellers?key={api_key}&domain={domain}&category={category}&month={month}&year={year}"
-    payload = {}
-    headers = {}
-    response = requests.request("GET", url, headers=headers, data=payload)
-    if response.status_code == 200:
-        response_json = response.json()
-        if 'bestSellersList' in response_json:
-            if response_json['bestSellersList'] is not None:
-                asins_l = response_json['bestSellersList']['asinList']
-    print(f"Asins_Bestsellers: {len(asins_l)}")
-    guardarBestSeller(f"BSellers-{month}-{year}.xlsx", asins_l, f"domain-{domain} Category-{category}")
+    # asins_l = []
+    # config = getConfig()
+    # url_base = config['keepa']['url']
+    # api_key = config['keepa']['api_key']
+    # api = keepa.Keepa(api_key)
+    # tokens_left = api.tokens_left
+    # while tokens_left < 50:
+    #     api.wait_for_tokens()
+    #     tokens_left = api.tokens_left
+    # print(f"Buscando BestSellers...Tokens:{api.tokens_left}")
+    # # url = f"{url_base}/bestsellers?key={api_key}&domain={domain}&category={category}&range={range}&month={mont}&year={year}"
+    # url = f"{url_base}/bestsellers?key={api_key}&domain={domain}&category={category}&month={month}&year={year}"
+    # payload = {}
+    # headers = {}
+    # response = requests.request("GET", url, headers=headers, data=payload)
+    # if response.status_code == 200:
+    #     response_json = response.json()
+    #     if 'bestSellersList' in response_json:
+    #         if response_json['bestSellersList'] is not None:
+    #             asins_l = response_json['bestSellersList']['asinList']
+    # print(f"Asins_Bestsellers: {len(asins_l)}")
+    # guardarBestSeller(f"BSellers-{month}-{year}.xlsx", asins_l, f"domain-{domain} Category-{category}")
     # asins_l = ['B0BZ3LPV6J','B000PEOMC8']
-    # asins_l = ['B0972DCZG3']
+    asins_l = ['B0009H5BLM']
     return asins_l
 
 if __name__ == '__main__':
