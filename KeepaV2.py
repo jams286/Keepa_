@@ -13,6 +13,9 @@ config = KUtils.getConfig()
 api_key = config['keepa']['api_key']
 dominio = config['keepa']['domain']    
 mode = int(config['keepa']['modo'])
+timeout = int(config['keepa']['timeout'])
+if timeout < 10:
+    timeout = 10
 cantidad_maxima_productos = int(config['keepa']['cantidad_maxima_productos'])
 buybox_int = int(config['keepa']['buybox'])
 if buybox_int == 0:
@@ -34,7 +37,7 @@ total_token = 0
     
 async def GetProducts(asins:list, domain:str, buybox:bool, days:int) :
     global total_token
-    api_async = await keepa.AsyncKeepa.create(api_key)
+    api_async = await keepa.AsyncKeepa.create(api_key, timeout=timeout)
     total_token = api_async.tokens_left
     print(f'tokens:{total_token}')
     return await api_async.query(asins, domain=domain, buybox=buybox, days=days)

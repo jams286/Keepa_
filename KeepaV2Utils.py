@@ -5,7 +5,9 @@ import openpyxl
 import numpy as np
 import configparser
 import pandas as pd
+from collections import defaultdict
 from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
 
 def import_excel(filename)->openpyxl.Workbook:            
     asins_l = []
@@ -18,6 +20,7 @@ def import_excel(filename)->openpyxl.Workbook:
     except Exception as e:
         print(f"Error al cargar el archivo Excel: {e}")    
     else:
+        asins_l = [x for x in asins_l if x is not None]
         return asins_l
             
 def getConfig()->configparser.ConfigParser:
@@ -112,6 +115,38 @@ def get_avg(price_list:list, date_list:list, month:int=0, year:int=0):
     return(precio_mas_reciente, promedio_precio_30_dias, promedio_precio_60_dias,
            promedio_precio_90_dias, promedio_precio_180_dias, promedio_precio_365_dias, lowest, promedio_month_year)
 
+def getMonthList()->list:
+    fecha_mas_reciente = datetime.now()
+    meses_del_año = [(fecha_mas_reciente.year, fecha_mas_reciente.month)]
+    for _ in range(12):
+        fecha_mas_reciente -= relativedelta(months=1)  # Usamos relativedelta para restar meses
+        meses_del_año.append((fecha_mas_reciente.year, fecha_mas_reciente.month))
+    return meses_del_año
+
+def getAvgMontly(price_list:list, date_list:list)->dict:
+    meses_del_año = getMonthList()
+    precios_por_mes = defaultdict(list)
+
+    # Recorrer las listas y agrupar por año y mes
+    for precio, fecha in zip(price_list, date_list):
+        clave_mes_año = (fecha.year, fecha.month)
+        precios_por_mes[clave_mes_año].append(precio)
+
+    # Calcular el promedio por mes, si no hay precios, se asigna promedio 0
+    promedios_por_mes = {}
+    for clave_mes_año in meses_del_año:
+        precios = precios_por_mes.get(clave_mes_año, [])
+        if precios:
+            precios_ = [x for x in precios if x is not None and not math.isnan(x)]
+            promedio = sum(precios_) / len(precios_)
+        else:
+            promedio = 0  # Mes sin precios, promedio 0
+        promedios_por_mes[clave_mes_año] = promedio
+    return promedios_por_mes
+    # Mostrar resultados
+    # for (año, mes), promedio in sorted(promedios_por_mes.items()):
+    #     print(f"Promedio de {mes}/{año}: {promedio:.2f}")
+
 def process_products(asin_list:list, month:int=0, year:int=0)->dict:      
     # columnas_excel = ["asin","domainId","imagesCSV","title","monthlySold","new_current","amazon_current","fbafees","packageWeight",
     #                   "referralFeePercent","hazardousMaterials","new_offer_count_current","lowest_fba_seller","manufacturer","brand",
@@ -123,78 +158,64 @@ def process_products(asin_list:list, month:int=0, year:int=0)->dict:
         print(f"{product['asin']}_producto_{i+1}")   
         upcList = ""        
         categories = "" 
-        current_salesRanks = 0
-        salesRanks_30 = 0
-        salesRanks_60 = 0
-        salesRanks_90 = 0
-        salesRanks_180 = 0
-        salesRanks_365 = 0  
-        new_current = 0
-        new_30 = 0
-        new_60 = 0
-        new_90 = 0
-        new_180 = 0
-        new_365 = 0
-        amazon_current = 0
-        amazon_30 = 0
-        amazon_60 = 0
-        amazon_90 = 0
-        amazon_180 = 0
-        amazon_365 = 0
-        buybox_current = 0
-        buybox_30 = 0
-        buybox_60 = 0
-        buybox_90 = 0
-        buybox_180 = 0
-        buybox_365 = 0
-        new_offer_count_current = 0
-        lowest_fba_seller = 0
-        monthlySold = 0
-        fbafees = 0
-        referralFeePercent = 0
-        lowest_amazon = 0
-        lowest_new = 0
-        mes_avg_amazon = 0
-        mes_avg_new = 0
+        current_fba = fba_30 = fba_60 = fba_90 = fba_180 = fba365 = 0
+        current_salesRanks = salesRanks_30 = salesRanks_60 = salesRanks_90 = salesRanks_180 = salesRanks_365 = 0  
+        new_current = new_30 =  new_60 = new_90 = new_180 = new_365 = 0
+        amazon_current = amazon_30 = amazon_60 = amazon_90 = amazon_180 = amazon_365 = 0
+        buybox_current = buybox_30 = buybox_60 = buybox_90 = buybox_180 = buybox_365 = 0
+        new_offer_count_current = lowest_fba_seller = monthlySold = fbafees = 0
+        referralFeePercent = lowest_amazon = lowest_new = mes_avg_amazon = mes_avg_new = 0
+        avg_m_amazon = {}
+        avg_m_new = {}
         if 'data' in product:
             data = product['data']
             if 'NEW' in data:
-                if product['data']['NEW'] is not None:# and not np.isnan(product['data']['NEW']):
+                if product['data']['NEW'] is not None:
                     new = product['data']['NEW']
                     new_time = product['data']['NEW_time']
                     if not all(np.isnan(new)):
+                        avg_m_new = getAvgMontly(new, new_time)
                         if year > 0 or month > 0:
                             new_current,new_30, new_60, new_90, new_180, new_365, lowest_new, mes_avg_new = get_avg(new, new_time, month=month, year=year)
                         else:
                             new_current,new_30, new_60, new_90, new_180, new_365, lowest_new,_ = get_avg(new, new_time)
             if 'AMAZON' in data:
-                if product['data']['AMAZON'] is not None:# and not np.isnan(product['data']['AMAZON']):
+                if product['data']['AMAZON'] is not None:
                     amazon = product['data']['AMAZON']
                     amazon_time = product['data']['AMAZON_time']
                     if not all(np.isnan(amazon)):
+                        avg_m_amazon = getAvgMontly(amazon, amazon_time)
                         if year > 0 or month > 0:
                             amazon_current,amazon_30, amazon_60, amazon_90, amazon_180, amazon_365, lowest_amazon, mes_avg_amazon = get_avg(amazon, amazon_time, month=month, year=year)
                         else:
                             amazon_current,amazon_30, amazon_60, amazon_90, amazon_180, amazon_365, lowest_amazon,_ = get_avg(amazon, amazon_time)
             if 'BUY_BOX_SHIPPING' in data:
-                if product['data']['BUY_BOX_SHIPPING'] is not None:# and not math.isnan(product['data']['BUY_BOX_SHIPPING']):
+                if product['data']['BUY_BOX_SHIPPING'] is not None:
                     buybox = product['data']['BUY_BOX_SHIPPING']
                     buybox_time = product['data']['BUY_BOX_SHIPPING_time']
                     if not all(np.isnan(buybox)):
                         buybox_current,buybox_30, buybox_60, buybox_90, buybox_180, buybox_365,_,_ = get_avg(buybox, buybox_time)
             if 'SALES' in data:
-                if product['data']['SALES'] is not None:# and not math.isnan(product['data']['SALES']):
+                if product['data']['SALES'] is not None:
                     sales = product['data']['SALES']
                     sales_time = product['data']['SALES_time']
                     if not all(np.isnan(sales)):
                         current_salesRanks, salesRanks_30, salesRanks_60, salesRanks_90, salesRanks_180, salesRanks_365,_,_ = get_avg(sales, sales_time)
+            if 'NEW_FBA' in data:
+                if product['data']['NEW_FBA'] is not None:
+                    fba = product['data']['NEW_FBA']
+                    fba_time = product['data']['NEW_FBA_time']
+                    if not all(np.isnan(fba)):
+                        current_fba, fba_30, fba_60, fba_90, fba_180, fba365, _,_ = get_avg(fba, fba_time)
 
         if 'upcList' in product:
             if product['upcList'] is not None:
                 upcList = ','.join(product['upcList'])
         if 'categories' in product:
-            categorias_str = [str(categoria) for categoria in product['categories']]
-            categories = ','.join(categorias_str)
+            cate = product['categories']
+            if cate is not None:
+                categorias_str = [str(categoria) for categoria in product['categories']]
+                categories = ','.join(categorias_str)
 
         asin = product['asin']
         domainId = product['domainId']            
@@ -224,12 +245,20 @@ def process_products(asin_list:list, month:int=0, year:int=0)->dict:
             
             hazardousMaterials = '; '.join([f"{aspect}: {','.join(values)}" for aspect, values in aspect_dict.items()])            
         manufacturer = product['manufacturer']
-        brand = product['brand']
+        brand = product['brand']        
         
         values = [asin,domainId, imagesCSV, title, monthlySold, new_current, amazon_current, fbafees, packageWeight, referralFeePercent, hazardousMaterials,
                     new_offer_count_current, lowest_fba_seller, manufacturer, brand, current_salesRanks, salesRanks_30, salesRanks_60, salesRanks_90, salesRanks_180,
                     salesRanks_365, new_30, new_60, new_90, new_180, new_365, amazon_30, amazon_60, amazon_90, amazon_180, amazon_365, buybox_current,
-                    buybox_30, buybox_60, buybox_90, buybox_180, buybox_365, upcList, categories,lowest_amazon,lowest_new]
+                    buybox_30, buybox_60, buybox_90, buybox_180, buybox_365, upcList, categories,lowest_amazon,lowest_new,current_fba, fba_30, fba_60, fba_90, fba_180,
+                    fba365]
+        
+        for (año, mes), promedio in sorted(avg_m_new.items()):
+            values.append(promedio)
+        
+        for (año, mes), promedio in sorted(avg_m_amazon.items()):
+            values.append(promedio)
+
         if (mes_avg_amazon != 0) or (mes_avg_new != 0):
             values.append(mes_avg_amazon)
             values.append(mes_avg_new)
@@ -242,7 +271,16 @@ def generarExcel(category:str, domain:str, n_columna:str)->openpyxl.Workbook:
                       "referralFeePercent","hazardousMaterials","new_offer_count_current","lowest_fba_seller","manufacturer","brand",
                       "current_salesRanks","30_salesRanks","180_salesRanks","90_salesRanks","180_salesRanks","365_salesRanks",
                       "30_new","60_new","90_new","180_new","365_new","30_amazon","60_amazon","90_amazon","180_amazon","365_amazon",
-                      "buybox_current","30_buybox","60_buybox","90_buybox","180_buybox","365_buybox","upcList","categories", "lowest_AMAZON", "lowest_NEW",]
+                      "buybox_current","30_buybox","60_buybox","90_buybox","180_buybox","365_buybox","upcList","categories", "lowest_AMAZON", "lowest_NEW",
+                      'current_fba', 'fba_30', 'fba_60', 'fba_90', 'fba_180','fba365']
+    
+    col_meses = getMonthList()
+    for mes in col_meses:
+        columnas_excel.append(f"NEW_{mes[1]}-{mes[0]}")
+    
+    for mes in col_meses:
+        columnas_excel.append(f"AMAZON_{mes[1]}-{mes[0]}")
+
     if n_columna != '':
         columnas_excel.append(n_columna+'_amazon')
         columnas_excel.append(n_columna+'_new')
@@ -270,6 +308,17 @@ def guardarExcel(wb:openpyxl.Workbook, fname):
     wb.save(filename)  
     print(f"saved {filename}")     
 
+def guardarBestSeller(filename:str,prods:list, title:str):
+    columnas_excel = ['ASINS']
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = title
+    ws.append(columnas_excel)
+    for idx, valor in enumerate(prods, start=2):
+        ws.cell(row=idx, column=1, value=valor)
+    wb.save(filename)  
+    print(f"saved {filename}")    
+
 def BestSellers(domain:str, category:str, month:str, year:str)->list:
     asins_l = []
     config = getConfig()
@@ -291,7 +340,8 @@ def BestSellers(domain:str, category:str, month:str, year:str)->list:
         if 'bestSellersList' in response_json:
             if response_json['bestSellersList'] is not None:
                 asins_l = response_json['bestSellersList']['asinList']
-    print(len(asins_l))
+    print(f"Asins_Bestsellers: {len(asins_l)}")
+    guardarBestSeller(f"BSellers-{month}-{year}.xlsx", asins_l, f"domain-{domain} Category-{category}")
     # asins_l = ['B0BZ3LPV6J','B000PEOMC8']
     # asins_l = ['B0972DCZG3']
     return asins_l
