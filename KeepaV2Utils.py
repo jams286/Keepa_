@@ -125,6 +125,7 @@ def getMonthList()->list:
 
 def getAvgMontly(price_list:list, date_list:list)->dict:
     meses_del_año = getMonthList()
+    # print(f"meses del año: {meses_del_año}")
     precios_por_mes = defaultdict(list)
 
     # Recorrer las listas y agrupar por año y mes
@@ -145,10 +146,31 @@ def getAvgMontly(price_list:list, date_list:list)->dict:
         else:
             promedio = 0  # Mes sin precios, promedio 0
         promedios_por_mes[clave_mes_año] = promedio
+    # print(f"precios por mes: {precios_por_mes}")
+    # print(f"promedios por mes: {promedios_por_mes}")
     return promedios_por_mes
     # Mostrar resultados
     # for (año, mes), promedio in sorted(promedios_por_mes.items()):
     #     print(f"Promedio de {mes}/{año}: {promedio:.2f}")
+
+def getDias()->list:
+    fecha_actual = datetime.now()
+    fecha_hace_un_ano = fecha_actual - relativedelta(years=1)
+    lista_fechas = []
+    dia = fecha_actual
+    while dia >= fecha_hace_un_ano:
+        lista_fechas.append(dia)
+        dia -= timedelta(days=1)
+    return lista_fechas
+
+def PrecioXdia(price_list:list, date_list:list)->list:
+    lista_fechas = getDias()
+    precio_por_fecha = {fecha.date(): precio for fecha, precio in zip(date_list, price_list)}
+    lista_precios = []
+    for fecha in lista_fechas:
+        precio = precio_por_fecha.get(fecha.date(), 0)  # Obtener el precio o 0 si no está
+        lista_precios.append(precio)
+    return lista_precios
 
 def process_products(asin_list:list, month:int=0, year:int=0)->dict:      
     # columnas_excel = ["asin","domainId","imagesCSV","title","monthlySold","new_current","amazon_current","fbafees","packageWeight",
@@ -156,7 +178,9 @@ def process_products(asin_list:list, month:int=0, year:int=0)->dict:
     #                   "current_salesRanks","30_salesRanks","180_salesRanks","90_salesRanks","180_salesRanks","365_salesRanks",
     #                   "30_new","60_new","90_new","180_new","365_new","30_amazon","60_amazon","90_amazon","180_amazon","365_amazon",
     #                   "buybox_current","30_buybox","60_buybox","90_buybox","180_buybox","365_buybox","upcList","categories"]    
-    asins_response = {}    
+    asins_response = {} 
+    precios_dia_new = {}
+    precios_dia_amazon = {}
     for i,product in enumerate(asin_list):
         print(f"{product['asin']}_producto_{i+1}")   
         upcList = ""        
@@ -168,6 +192,8 @@ def process_products(asin_list:list, month:int=0, year:int=0)->dict:
         buybox_current = buybox_30 = buybox_60 = buybox_90 = buybox_180 = buybox_365 = 0
         new_offer_count_current = lowest_fba_seller = monthlySold = fbafees = 0
         referralFeePercent = lowest_amazon = lowest_new = mes_avg_amazon = mes_avg_new = 0
+        salesRankDrops30 = salesRankDrops90 = salesRankDrops180 = salesRankDrops365 = 0
+        lista_precios_dia_new = lista_precios_dia_amazon = []
         avg_m_amazon = {}
         avg_m_new = {}
         if 'data' in product:
@@ -178,6 +204,8 @@ def process_products(asin_list:list, month:int=0, year:int=0)->dict:
                     new_time = product['data']['NEW_time']
                     if not all(np.isnan(new)):
                         avg_m_new = getAvgMontly(new, new_time)
+                        lista_precios_dia_new = PrecioXdia(new, new_time)                        
+                        lista_precios_dia_new.insert(0,product['asin'])
                         if year > 0 or month > 0:
                             new_current,new_30, new_60, new_90, new_180, new_365, lowest_new, mes_avg_new = get_avg(new, new_time, month=month, year=year)
                         else:
@@ -188,6 +216,8 @@ def process_products(asin_list:list, month:int=0, year:int=0)->dict:
                     amazon_time = product['data']['AMAZON_time']
                     if not all(np.isnan(amazon)):
                         avg_m_amazon = getAvgMontly(amazon, amazon_time)
+                        lista_precios_dia_amazon = PrecioXdia(amazon, amazon_time)
+                        lista_precios_dia_amazon.insert(0,product['asin'])
                         if year > 0 or month > 0:
                             amazon_current,amazon_30, amazon_60, amazon_90, amazon_180, amazon_365, lowest_amazon, mes_avg_amazon = get_avg(amazon, amazon_time, month=month, year=year)
                         else:
@@ -248,18 +278,26 @@ def process_products(asin_list:list, month:int=0, year:int=0)->dict:
             
             hazardousMaterials = '; '.join([f"{aspect}: {','.join(values)}" for aspect, values in aspect_dict.items()])            
         manufacturer = product['manufacturer']
-        brand = product['brand']        
+        brand = product['brand']   
+
+        if 'stats' in product:
+            stats = product['stats'] 
+            if stats is not None:
+                salesRankDrops30 = product['stats']['salesRankDrops30']
+                salesRankDrops90 = product['stats']['salesRankDrops90']
+                salesRankDrops180 = product['stats']['salesRankDrops180']
+                salesRankDrops365 = product['stats']['salesRankDrops365']
         
         values = [asin,domainId, imagesCSV, title, monthlySold, new_current, amazon_current, fbafees, packageWeight, referralFeePercent, hazardousMaterials,
                     new_offer_count_current, lowest_fba_seller, manufacturer, brand, current_salesRanks, salesRanks_30, salesRanks_60, salesRanks_90, salesRanks_180,
                     salesRanks_365, new_30, new_60, new_90, new_180, new_365, amazon_30, amazon_60, amazon_90, amazon_180, amazon_365, buybox_current,
                     buybox_30, buybox_60, buybox_90, buybox_180, buybox_365, upcList, categories,lowest_amazon,lowest_new,current_fba, fba_30, fba_60, fba_90, fba_180,
-                    fba365]
+                    fba365, salesRankDrops30, salesRankDrops90, salesRankDrops180, salesRankDrops365]
         
-        for (año, mes), promedio in sorted(avg_m_new.items()):
+        for (año, mes), promedio in avg_m_new.items():
             values.append(promedio)
         
-        for (año, mes), promedio in sorted(avg_m_amazon.items()):
+        for (año, mes), promedio in avg_m_amazon.items():
             values.append(promedio)
 
         if (mes_avg_amazon != 0) or (mes_avg_new != 0):
@@ -267,7 +305,10 @@ def process_products(asin_list:list, month:int=0, year:int=0)->dict:
             values.append(mes_avg_new)
 
         asins_response[asin] = values
-    return asins_response
+        precios_dia_new[asin] = lista_precios_dia_new
+        precios_dia_amazon[asin] = lista_precios_dia_amazon
+        
+    return (asins_response, precios_dia_new, precios_dia_amazon)
 
 def generarExcel(category:str, domain:str, n_columna:str)->openpyxl.Workbook:
     columnas_excel = ["asin","domainId","imagesCSV","title","monthlySold","new_current","amazon_current","fbafees","packageWeight",
@@ -275,14 +316,16 @@ def generarExcel(category:str, domain:str, n_columna:str)->openpyxl.Workbook:
                       "current_salesRanks","30_salesRanks","180_salesRanks","90_salesRanks","180_salesRanks","365_salesRanks",
                       "30_new","60_new","90_new","180_new","365_new","30_amazon","60_amazon","90_amazon","180_amazon","365_amazon",
                       "buybox_current","30_buybox","60_buybox","90_buybox","180_buybox","365_buybox","upcList","categories", "lowest_AMAZON", "lowest_NEW",
-                      'current_fba', 'fba_30', 'fba_60', 'fba_90', 'fba_180','fba365']
+                      'current_fba', 'fba_30', 'fba_60', 'fba_90', 'fba_180','fba365',"salesRankDrops30","salesRankDrops90","salesRankDrops180","salesRankDrops365"]
     
     col_meses = getMonthList()
     for mes in col_meses:
         columnas_excel.append(f"NEW_{mes[1]}-{mes[0]}")
+        # print(f"NEW_{mes[1]}-{mes[0]}")
     
     for mes in col_meses:
         columnas_excel.append(f"AMAZON_{mes[1]}-{mes[0]}")
+        # print(f"AMAZON_{mes[1]}-{mes[0]}")
 
     if n_columna != '':
         columnas_excel.append(n_columna+'_amazon')
@@ -297,12 +340,38 @@ def generarExcel(category:str, domain:str, n_columna:str)->openpyxl.Workbook:
     ws = wb.active
     ws.title = f'{dom}_{category}'
     ws.append(columnas_excel)
+
+    string_date_list = [fecha.strftime("%Y-%m-%d") for fecha in getDias()]
+    lista_dias = string_date_list
+    lista_dias.insert(0, 'ASINS')
+
+    ws_new = wb.create_sheet(title='precios_new')
+    ws_new.append(lista_dias)
+    ws_amazon = wb.create_sheet(title='precios_amazon')
+    ws_amazon.append(lista_dias)
+    wb.active = ws
+    # print(f"Columnas {columnas_excel}")
     return wb
 
-def agregarProductosExcel(wb:openpyxl.Workbook, productos:dict) -> openpyxl.Workbook:
+def agregarProductosExcel(wb:openpyxl.Workbook, productos:dict, new_dia:dict, amazon_dia:dict) -> openpyxl.Workbook:
     ws = wb.active
     for key, value in productos.items():
         ws.append(value)
+
+    
+    wb.active = wb["precios_new"]
+    ws_new = wb.active
+    
+    for key, value in new_dia.items():
+        ws_new.append(value)
+    
+    wb.active = wb["precios_amazon"]
+    ws_amazon = wb.active
+    
+    for key, value in amazon_dia.items():
+        ws_amazon.append(value)  
+
+    wb.active = ws
 
 def guardarExcel(wb:openpyxl.Workbook, fname):
     now = datetime.now() # current date and time
@@ -323,30 +392,30 @@ def guardarBestSeller(filename:str,prods:list, title:str):
     print(f"saved {filename}")    
 
 def BestSellers(domain:str, category:str, month:str, year:str)->list:
-    # asins_l = []
-    # config = getConfig()
-    # url_base = config['keepa']['url']
-    # api_key = config['keepa']['api_key']
-    # api = keepa.Keepa(api_key)
-    # tokens_left = api.tokens_left
-    # while tokens_left < 50:
-    #     api.wait_for_tokens()
-    #     tokens_left = api.tokens_left
-    # print(f"Buscando BestSellers...Tokens:{api.tokens_left}")
-    # # url = f"{url_base}/bestsellers?key={api_key}&domain={domain}&category={category}&range={range}&month={mont}&year={year}"
-    # url = f"{url_base}/bestsellers?key={api_key}&domain={domain}&category={category}&month={month}&year={year}"
-    # payload = {}
-    # headers = {}
-    # response = requests.request("GET", url, headers=headers, data=payload)
-    # if response.status_code == 200:
-    #     response_json = response.json()
-    #     if 'bestSellersList' in response_json:
-    #         if response_json['bestSellersList'] is not None:
-    #             asins_l = response_json['bestSellersList']['asinList']
-    # print(f"Asins_Bestsellers: {len(asins_l)}")
-    # guardarBestSeller(f"BSellers-{month}-{year}.xlsx", asins_l, f"domain-{domain} Category-{category}")
+    asins_l = []
+    config = getConfig()
+    url_base = config['keepa']['url']
+    api_key = config['keepa']['api_key']
+    api = keepa.Keepa(api_key)
+    tokens_left = api.tokens_left
+    while tokens_left < 50:
+        api.wait_for_tokens()
+        tokens_left = api.tokens_left
+    print(f"Buscando BestSellers...Tokens:{api.tokens_left}")
+    # url = f"{url_base}/bestsellers?key={api_key}&domain={domain}&category={category}&range={range}&month={mont}&year={year}"
+    url = f"{url_base}/bestsellers?key={api_key}&domain={domain}&category={category}&month={month}&year={year}"
+    payload = {}
+    headers = {}
+    response = requests.request("GET", url, headers=headers, data=payload)
+    if response.status_code == 200:
+        response_json = response.json()
+        if 'bestSellersList' in response_json:
+            if response_json['bestSellersList'] is not None:
+                asins_l = response_json['bestSellersList']['asinList']
+    print(f"Asins_Bestsellers: {len(asins_l)}")
+    guardarBestSeller(f"BSellers-{month}-{year}.xlsx", asins_l, f"domain-{domain} Category-{category}")
     # asins_l = ['B0BZ3LPV6J','B000PEOMC8']
-    asins_l = ['B0009H5BLM']
+    # asins_l = ['B0009H5BLM']
     return asins_l
 
 if __name__ == '__main__':

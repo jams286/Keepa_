@@ -40,7 +40,7 @@ async def GetProducts(asins:list, domain:str, buybox:bool, days:int) :
     api_async = await keepa.AsyncKeepa.create(api_key, timeout=timeout)
     total_token = api_async.tokens_left
     print(f'tokens:{total_token}')
-    return await api_async.query(asins, domain=domain, buybox=buybox, days=days)
+    return await api_async.query(asins, domain=domain, buybox=buybox, days=days, stats=180)
     
 if __name__ == '__main__':
     print(f"Iniciando...")
@@ -52,7 +52,7 @@ if __name__ == '__main__':
     if mode == 0:
         wb_ = KUtils.generarExcel(categoria,dominio,f"{year}-{month}")
         asins_list = KUtils.BestSellers(dominio, categoria, month, year)  #Canada 6205517011
-        # asins_list = ['B00000IZKX']
+        # asins_list = ['B00002EQAF']
     # ArchivoExcel
     if mode == 2:
         wb_ = KUtils.generarExcel('',dominio,'')
@@ -72,12 +72,13 @@ if __name__ == '__main__':
                 dom = 'CA'
             productos  = asyncio.run(GetProducts(batch, dom, buybox_, 365))
             if mode == 0:
-                products_dict = KUtils.process_products(productos,month=int(month), year=int(year)) 
+                products_dict, prod_new_dia, prod_amazon_dia = KUtils.process_products(productos,month=int(month), year=int(year)) 
             else:   
-                products_dict = KUtils.process_products(productos)
-            KUtils.agregarProductosExcel(wb_, products_dict)
+                products_dict, prod_new_dia, prod_amazon_dia = KUtils.process_products(productos)
+            KUtils.agregarProductosExcel(wb_, products_dict, prod_new_dia, prod_amazon_dia)
             procesados += batch_size 
             print(f"Guardando Productos...{procesados}/{total}")
+
     except Exception as e:
         traceback.print_exc()
     finally:
