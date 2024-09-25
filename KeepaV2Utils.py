@@ -142,9 +142,9 @@ def getAvgMontly(price_list:list, date_list:list)->dict:
             if len(precios_) > 0:
                 promedio = sum(precios_) / len(precios_)
             else:
-                promedio = 0
+                promedio = None
         else:
-            promedio = 0  # Mes sin precios, promedio 0
+            promedio = None  # Mes sin precios, promedio 0
         promedios_por_mes[clave_mes_año] = promedio
     # print(f"precios por mes: {precios_por_mes}")
     # print(f"promedios por mes: {promedios_por_mes}")
@@ -168,7 +168,7 @@ def PrecioXdia(price_list:list, date_list:list)->list:
     precio_por_fecha = {fecha.date(): precio for fecha, precio in zip(date_list, price_list)}
     lista_precios = []
     for fecha in lista_fechas:
-        precio = precio_por_fecha.get(fecha.date(), 0)  # Obtener el precio o 0 si no está
+        precio = precio_por_fecha.get(fecha.date(), None)  # Obtener el precio o 0 si no está
         lista_precios.append(precio)
     return lista_precios
 
