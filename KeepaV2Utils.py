@@ -181,6 +181,7 @@ def process_products(asin_list:list, month:int=0, year:int=0)->dict:
     asins_response = {} 
     precios_dia_new = {}
     precios_dia_amazon = {}
+    precios_dia_bb = {}
     for i,product in enumerate(asin_list):
         print(f"{product['asin']}_producto_{i+1}")   
         upcList = ""        
@@ -228,6 +229,8 @@ def process_products(asin_list:list, month:int=0, year:int=0)->dict:
                     buybox_time = product['data']['BUY_BOX_SHIPPING_time']
                     if not all(np.isnan(buybox)):
                         buybox_current,buybox_30, buybox_60, buybox_90, buybox_180, buybox_365,_,_ = get_avg(buybox, buybox_time)
+                        lista_precios_dia_bb = PrecioXdia(buybox, buybox_time)
+                        lista_precios_dia_bb.insert(0,product['asin'])
             if 'SALES' in data:
                 if product['data']['SALES'] is not None:
                     sales = product['data']['SALES']
@@ -307,8 +310,9 @@ def process_products(asin_list:list, month:int=0, year:int=0)->dict:
         asins_response[asin] = values
         precios_dia_new[asin] = lista_precios_dia_new
         precios_dia_amazon[asin] = lista_precios_dia_amazon
+        precios_dia_bb[asin] = lista_precios_dia_bb
         
-    return (asins_response, precios_dia_new, precios_dia_amazon)
+    return (asins_response, precios_dia_new, precios_dia_amazon, precios_dia_bb)
 
 def generarExcel(category:str, domain:str, n_columna:str)->openpyxl.Workbook:
     columnas_excel = ["asin","domainId","imagesCSV","title","monthlySold","new_current","amazon_current","fbafees","packageWeight",
@@ -349,11 +353,13 @@ def generarExcel(category:str, domain:str, n_columna:str)->openpyxl.Workbook:
     ws_new.append(lista_dias)
     ws_amazon = wb.create_sheet(title='precios_amazon')
     ws_amazon.append(lista_dias)
+    ws_amazon = wb.create_sheet(title='precios_BB')
+    ws_amazon.append(lista_dias)
     wb.active = ws
     # print(f"Columnas {columnas_excel}")
     return wb
 
-def agregarProductosExcel(wb:openpyxl.Workbook, productos:dict, new_dia:dict, amazon_dia:dict) -> openpyxl.Workbook:
+def agregarProductosExcel(wb:openpyxl.Workbook, productos:dict, new_dia:dict, amazon_dia:dict, bb_dia:dict) -> openpyxl.Workbook:
     ws = wb.active
     for key, value in productos.items():
         ws.append(value)
@@ -369,7 +375,13 @@ def agregarProductosExcel(wb:openpyxl.Workbook, productos:dict, new_dia:dict, am
     ws_amazon = wb.active
     
     for key, value in amazon_dia.items():
-        ws_amazon.append(value)  
+        ws_amazon.append(value) 
+
+    wb.active = wb["precios_BB"]
+    ws_bb = wb.active
+    
+    for key, value in bb_dia.items():
+        ws_bb.append(value)
 
     wb.active = ws
 

@@ -24,13 +24,13 @@ elif buybox_int == 1:
     buybox_ = True
 else:
     buybox_ = False
-if mode == 0 :
+if (mode == 0) or (mode == 3) :
     categoria = config['bestSeller']['categoria']
     year = config['bestSeller']['year']
     month = config['bestSeller']['month']
 elif mode == 1 :
     pass
-elif mode == 2 :
+elif (mode == 2) or (mode == 4) :
     file_path = config['file']['ubicacion_archivo']
 # api.best_sellers_query
 total_token = 0
@@ -49,18 +49,29 @@ if __name__ == '__main__':
     producs = {}
     asins_list = []
     # BestSeller
-    if mode == 0:
+    if (mode == 0):
         wb_ = KUtils.generarExcel(categoria,dominio,f"{year}-{month}")
         asins_list = KUtils.BestSellers(dominio, categoria, month, year)  #Canada 6205517011
         # asins_list = ['B00002EQAF']
     # ArchivoExcel
-    if mode == 2:
+    elif (mode == 2):
         wb_ = KUtils.generarExcel('',dominio,'')
         asins_list = KUtils.import_excel(file_path)
+    elif mode == 3:
+        wb_ = KUtils.generarExcel(categoria,'1',f"{year}-{month}")
+        wb_CA = KUtils.generarExcel(categoria,'6',f"{year}-{month}")
+        asins_list = KUtils.BestSellers(dominio, categoria, month, year)  #Canada 6205517011
+    elif (mode == 4):
+        wb_ = KUtils.generarExcel('','1','')
+        wb_CA = KUtils.generarExcel('','6','')
+        asins_list = KUtils.import_excel(file_path)
+
     if len(asins_list) > cantidad_maxima_productos:
         asin_max = asins_list[:cantidad_maxima_productos]
     else:
         asin_max = asins_list
+    
+    
 
     total = len(asin_max)
     try:
@@ -70,12 +81,27 @@ if __name__ == '__main__':
                 dom = 'US'
             elif dominio == '6':
                 dom = 'CA'
-            productos  = asyncio.run(GetProducts(batch, dom, buybox_, 365))
+            if (mode == 3) or (mode == 4):
+                productos  = asyncio.run(GetProducts(batch, 'US', buybox_, 365))
+                productos_ca  = asyncio.run(GetProducts(batch, 'CA', buybox_, 365))
+            else:
+                productos  = asyncio.run(GetProducts(batch, dom, buybox_, 365))
+            
             if mode == 0:
-                products_dict, prod_new_dia, prod_amazon_dia = KUtils.process_products(productos,month=int(month), year=int(year)) 
-            else:   
-                products_dict, prod_new_dia, prod_amazon_dia = KUtils.process_products(productos)
-            KUtils.agregarProductosExcel(wb_, products_dict, prod_new_dia, prod_amazon_dia)
+                products_dict, prod_new_dia, prod_amazon_dia, prod_bb_dia = KUtils.process_products(productos,month=int(month), year=int(year)) 
+            elif mode == 2: 
+                products_dict, prod_new_dia, prod_amazon_dia, prod_bb_dia = KUtils.process_products(productos)
+            elif mode == 3:
+                products_dict, prod_new_dia, prod_amazon_dia, prod_bb_dia = KUtils.process_products(productos,month=int(month), year=int(year)) 
+                products_dict_ca, prod_new_dia_ca, prod_amazon_dia_ca, prod_bb_dia_ca = KUtils.process_products(productos_ca,month=int(month), year=int(year)) 
+            elif mode == 4:
+                products_dict, prod_new_dia, prod_amazon_dia, prod_bb_dia = KUtils.process_products(productos)
+                products_dict_ca, prod_new_dia_ca, prod_amazon_dia_ca, prod_bb_dia_ca = KUtils.process_products(productos_ca)
+
+            KUtils.agregarProductosExcel(wb_, products_dict, prod_new_dia, prod_amazon_dia, prod_bb_dia)
+            if (mode == 3) or (mode ==4):
+                KUtils.agregarProductosExcel(wb_CA, products_dict_ca, prod_new_dia_ca, prod_amazon_dia_ca, prod_bb_dia_ca)
+
             procesados += batch_size 
             print(f"Guardando Productos...{procesados}/{total}")
 
@@ -85,10 +111,19 @@ if __name__ == '__main__':
         fname = ''
         if mode == 0:
             fname = f'BestSeller{month}-{year}'
-        if mode == 2:
+        elif mode == 2:
             fname = f'Asins'
+        elif mode == 3:
+            fname = f'BestSeller_US_{month}-{year}'
+            fname_ca = f'BestSeller_CA_{month}-{year}'
+        elif mode == 4:
+            fname = f'Asins_US'
+            fname_ca = f'Asins_CA'
 
         KUtils.guardarExcel(wb_, fname)
+        if (mode == 3) or (mode == 4):
+            KUtils.guardarExcel(wb_CA, fname_ca)
+            
         print(f'Finalizando...')
         hora_fin = datetime.now()
         duracion = (hora_fin - hora_inicio).total_seconds()
