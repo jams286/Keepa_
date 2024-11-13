@@ -183,7 +183,7 @@ def process_products(asin_list:list, month:int=0, year:int=0)->dict:
     precios_dia_amazon = {}
     precios_dia_bb = {}
     for i,product in enumerate(asin_list):
-        print(f"{product['asin']}_producto_{i+1}")   
+        # print(f"{product['asin']}_producto_{i+1}")   
         upcList = ""        
         categories = "" 
         current_fba = fba_30 = fba_60 = fba_90 = fba_180 = fba365 = 0
@@ -194,7 +194,7 @@ def process_products(asin_list:list, month:int=0, year:int=0)->dict:
         new_offer_count_current = lowest_fba_seller = monthlySold = fbafees = 0
         referralFeePercent = lowest_amazon = lowest_new = mes_avg_amazon = mes_avg_new = 0
         salesRankDrops30 = salesRankDrops90 = salesRankDrops180 = salesRankDrops365 = 0
-        lista_precios_dia_new = lista_precios_dia_amazon = []
+        lista_precios_dia_new = lista_precios_dia_amazon = lista_precios_dia_bb = []
         avg_m_amazon = {}
         avg_m_new = {}
         if 'data' in product:
